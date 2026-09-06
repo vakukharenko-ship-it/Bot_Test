@@ -18,6 +18,7 @@ from services.formatter import (
     get_product_data_for_period
 )
 from api.seller import fetch_postings
+from bot.handlers.charts import generate_product_chart_by_metric
 from bot.keyboards import (
     products_reports_keyboard, main_admin_keyboard, main_user_keyboard
 )
@@ -248,7 +249,6 @@ async def product_period_callback(update: Update, context: ContextTypes.DEFAULT_
             await query.edit_message_text("❌ Ошибка: потеряны данные. Начните заново.")
             return ConversationHandler.END
         await query.edit_message_text("⏳ Строю график...")
-        from bot.handlers.charts import generate_product_chart_by_metric
         chart_buf = await generate_product_chart_by_metric(sku, metric, [current_year])
         if chart_buf:
             context.user_data['product_year'] = current_year
@@ -314,7 +314,6 @@ async def product_range_end(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text("❌ Ошибка: потеряны данные. Начните заново.")
         return ConversationHandler.END
     progress_msg = await update.message.reply_text("⏳ Строю график...")
-    from bot.handlers.charts import generate_product_chart_by_metric
     chart_buf = await generate_product_chart_by_metric(sku, metric, years)
     await progress_msg.delete()
     if chart_buf:
@@ -379,7 +378,6 @@ async def product_chart_interactive_callback(update: Update, context: ContextTyp
             return ConversationHandler.END
         await query.message.delete()
         progress_msg = await query.message.reply_text("⏳ Строю график...")
-        from bot.handlers.charts import generate_product_chart_by_metric
         chart_buf = await generate_product_chart_by_metric(sku, metric, [year])
         await progress_msg.delete()
         if chart_buf:
@@ -396,11 +394,6 @@ async def product_chart_interactive_callback(update: Update, context: ContextTyp
         return ConversationHandler.END
 
 # ---------- ОБРАБОТЧИКИ INLINE CALLBACK ДЛЯ ТОВАРОВ ----------
-# Эти обработчики используются в handle_callback_query (в sales.py) для товарных разделов.
-# Мы будем вызывать их оттуда, поэтому они должны быть доступны.
-# Для удобства я добавлю сюда функции для обработки товарных callback'ов,
-# а в sales.py импортируем их и вызовем.
-
 async def handle_product_date_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обрабатывает выбор даты для товаров (pdate_)."""
     query = update.callback_query
