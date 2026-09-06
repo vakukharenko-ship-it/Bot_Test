@@ -1,0 +1,32 @@
+import datetime
+import os
+
+# ==================== ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ ====================
+OZON_CLIENT_ID = os.getenv("OZON_CLIENT_ID")
+OZON_API_KEY = os.getenv("OZON_API_KEY")
+OZON_PERFORMANCE_CLIENT_ID = os.getenv("OZON_PERFORMANCE_CLIENT_ID")
+OZON_PERFORMANCE_CLIENT_SECRET = os.getenv("OZON_PERFORMANCE_CLIENT_SECRET")
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "0"))
+
+# ==================== URL-АДРЕСА API ====================
+OZON_POSTING_FBO_URL = "https://api-seller.ozon.ru/v2/posting/fbo/list"
+OZON_FINANCE_URL = "https://api-seller.ozon.ru/v3/finance/transaction/list"
+
+# ==================== ФАЙЛЫ ====================
+MANAGERS_FILE = "managers.json"
+LOG_FILE = "/app/data/ozon_log.txt"
+
+# ==================== КОНСТАНТЫ ====================
+API_TIMEOUT = 15
+API_MAX_DAYS_PER_REQUEST = 90
+API_RETRY_ATTEMPTS = 3
+API_RETRY_DELAY = 2
+CACHE_TTL_SECONDS = 300
+RATE_LIMIT_REQUESTS_PER_SECOND = 2
+
+# ==================== ЧАСОВОЙ ПОЯС ====================
+MOSCOW_TZ = datetime.timezone(datetime.timedelta(hours=3))
+
+# ==================== ВЕРСИЯ БОТА ====================
+VERSION = "2.1.3"
