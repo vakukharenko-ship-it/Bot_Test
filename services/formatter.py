@@ -560,7 +560,54 @@ async def format_combined_metrics_with_deltas(include_yesterday=False, progress_
         await progress_callback("Готово", 100)
     return "📊 *Продажи за сегодня*\n\n\n" + "\n\n".join(parts)
 
-# ==================== ФОРМАТИРОВАНИЕ ТОВАРНЫХ ОТЧЁТОВ ====================
+# ==================== ТОВАРНЫЕ ОТЧЁТЫ ====================
+async def get_product_data_for_date(date_str):
+    """Возвращает агрегированные данные по товарам за конкретную дату."""
+    today = get_moscow_today()
+    start = (today - datetime.timedelta(days=183)).strftime("%Y-%m-%d")
+    end = today.strftime("%Y-%m-%d")
+    postings = await fetch_postings(start, end)
+    products = aggregate_products(postings, date_from=date_str, date_to=date_str)
+    return products
+
+async def get_product_data_for_period(date_from, date_to):
+    """Возвращает агрегированные данные по товарам за период."""
+    postings = await fetch_postings(date_from, date_to)
+    products = aggregate_products(postings, date_from=date_from, date_to=date_to)
+    return products
+
+async def get_product_data_today():
+    now = get_current_time_msk()
+    today_str = now.date().isoformat()
+    postings = await fetch_postings(today_str, today_str)
+    products = aggregate_products(postings, date_from=today_str, date_to=today_str,
+                                  time_limit=now.time(), apply_limit_on_day=today_str)
+    return products
+
+async def get_product_data_month():
+    now = get_current_time_msk()
+    today_date = now.date()
+    current_month_start = today_date.replace(day=1).isoformat()
+    today_str = today_date.isoformat()
+    postings = await fetch_postings(current_month_start, today_str)
+    products = aggregate_products(postings, date_from=current_month_start, date_to=today_str,
+                                  time_limit=now.time(), apply_limit_on_day=today_str)
+    return products
+
+async def get_product_data_prev_month():
+    now = get_current_time_msk()
+    today_date = now.date()
+    current_month_start = today_date.replace(day=1)
+    previous_month_start = (current_month_start - datetime.timedelta(days=1)).replace(day=1)
+    days_passed = (today_date - current_month_start).days + 1
+    prev_period_end = previous_month_start + datetime.timedelta(days=days_passed - 1)
+    prev_start_str = previous_month_start.isoformat()
+    prev_end_str = prev_period_end.isoformat()
+    postings = await fetch_postings(prev_start_str, prev_end_str)
+    products = aggregate_products(postings, date_from=prev_start_str, date_to=prev_end_str,
+                                  time_limit=now.time(), apply_limit_on_day=prev_end_str)
+    return products
+
 def format_top_products(products, title, limit=15):
     if not products:
         return f"📦 {title}\n\n❌ Нет данных за указанный период."
@@ -601,39 +648,6 @@ def format_products_summary(products):
         f"  Всего заказов: {total_orders}\n"
         f"  Средний чек: {avg_check:,.2f} ₽"
     )
-
-# ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ ТОВАРНОГО ОТЧЁТА ====================
-async def get_product_data_today():
-    now = get_current_time_msk()
-    today_str = now.date().isoformat()
-    postings = await fetch_postings(today_str, today_str)
-    products = aggregate_products(postings, date_from=today_str, date_to=today_str,
-                                  time_limit=now.time(), apply_limit_on_day=today_str)
-    return products
-
-async def get_product_data_month():
-    now = get_current_time_msk()
-    today_date = now.date()
-    current_month_start = today_date.replace(day=1).isoformat()
-    today_str = today_date.isoformat()
-    postings = await fetch_postings(current_month_start, today_str)
-    products = aggregate_products(postings, date_from=current_month_start, date_to=today_str,
-                                  time_limit=now.time(), apply_limit_on_day=today_str)
-    return products
-
-async def get_product_data_prev_month():
-    now = get_current_time_msk()
-    today_date = now.date()
-    current_month_start = today_date.replace(day=1)
-    previous_month_start = (current_month_start - datetime.timedelta(days=1)).replace(day=1)
-    days_passed = (today_date - current_month_start).days + 1
-    prev_period_end = previous_month_start + datetime.timedelta(days=days_passed - 1)
-    prev_start_str = previous_month_start.isoformat()
-    prev_end_str = prev_period_end.isoformat()
-    postings = await fetch_postings(prev_start_str, prev_end_str)
-    products = aggregate_products(postings, date_from=prev_start_str, date_to=prev_end_str,
-                                  time_limit=now.time(), apply_limit_on_day=prev_end_str)
-    return products
 
 async def format_product_combined():
     products_today, products_month, products_prev_month = await asyncio.gather(
