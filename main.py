@@ -1,3 +1,6 @@
+import sys
+import importlib
+import signal
 import asyncio
 from telegram import Update
 from telegram.ext import (
@@ -43,25 +46,70 @@ from bot.states import (
 from services.scheduler import scheduled_report
 from utils.logger import write_log
 
+
+# ==================== ДИАГНОСТИКА МОДУЛЕЙ ====================
+def check_modules(module_list):
+    """Проверяет наличие и версии указанных модулей, выводит в лог."""
+    for module_name in module_list:
+        try:
+            mod = importlib.import_module(module_name)
+            version = getattr(mod, "__version__", "неизвестно")
+            write_log(f"✅ Модуль '{module_name}' загружен (версия {version})")
+        except ImportError as e:
+            write_log(f"❌ Ошибка загрузки модуля '{module_name}': {e}")
+
+
+# ==================== ОБРАБОТЧИКИ ЖИЗНЕННОГО ЦИКЛА ====================
 async def post_init(app):
     await init_http_session()
+
 
 async def post_shutdown(app):
     await close_http_session()
 
+
+def signal_handler(sig, frame):
+    write_log("⚠️ Получен сигнал остановки, закрываем сессию...")
+    asyncio.create_task(close_http_session())
+    sys.exit(0)
+
+
+# ==================== ТОЧКА ВХОДА ====================
 def main():
+    # Обработка сигналов для graceful shutdown
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
     write_log(f"🚀 Бот запускается (версия {VERSION})")
+
+    # Диагностика зависимостей
+    required_modules = [
+        "aiohttp",
+        "matplotlib",
+        "PIL",           # Pillow
+        "telegram",
+    ]
+    optional_modules = [
+        "aiodns",
+        "cchardet",
+    ]
+    write_log("🔍 Проверка необходимых модулей...")
+    check_modules(required_modules)
+    write_log("🔍 Проверка опциональных модулей...")
+    check_modules(optional_modules)
+
     if not all([OZON_CLIENT_ID, OZON_API_KEY, TELEGRAM_BOT_TOKEN]):
         write_log("❌ ОШИБКА: Не все переменные окружения установлены!")
         return
     if not OZON_PERFORMANCE_CLIENT_ID or not OZON_PERFORMANCE_CLIENT_SECRET:
         write_log("⚠️ ВНИМАНИЕ: OZON_PERFORMANCE_CLIENT_ID или CLIENT_SECRET не заданы. Рекламные расходы не будут отображаться.")
 
+    # Создание приложения с увеличенными таймаутами
     application = (Application.builder()
                    .token(TELEGRAM_BOT_TOKEN)
-                   .connect_timeout(30.0)
-                   .read_timeout(30.0)
-                   .write_timeout(30.0)
+                   .connect_timeout(60.0)
+                   .read_timeout(60.0)
+                   .write_timeout(60.0)
                    .post_init(post_init)
                    .post_shutdown(post_shutdown)
                    .build())
@@ -192,7 +240,12 @@ def main():
         write_log("⚠️ JobQueue недоступен.")
 
     write_log("🚀 Бот готов.")
-    application.run_polling(allowed_updates=Update.ALL_TYPES, timeout=30)
+    try:
+        application.run_polling(allowed_updates=Update.ALL_TYPES, timeout=60)
+    finally:
+        # Принудительное закрытие сессии после остановки поллинга
+        asyncio.run(close_http_session())
+
 
 if __name__ == "__main__":
     main()
