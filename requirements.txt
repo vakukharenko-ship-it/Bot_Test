@@ -3,3 +3,4 @@ aiohttp
 aiodns
 Pillow
 matplotlib
+cchardet
