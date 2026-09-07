@@ -22,7 +22,7 @@ from api.performance import fetch_advertising_expense
 from services.aggregator import aggregate_postings, aggregate_finance_expenses
 from bot.keyboards import (
     main_admin_keyboard, main_user_keyboard,
-    sales_reports_keyboard, admin_keyboard
+    sales_reports_keyboard, admin_keyboard, products_reports_keyboard
 )
 from bot.states import (
     WAITING_DATE_SINGLE, WAITING_PERIOD_TYPE,
